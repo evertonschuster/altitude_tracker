@@ -1,20 +1,91 @@
 import 'package:flutter/material.dart';
+import 'package:location/location.dart';
 
-import 'src/app.dart';
-import 'src/settings/settings_controller.dart';
-import 'src/settings/settings_service.dart';
+void main() => runApp(MyApp());
 
-void main() async {
-  // Set up the SettingsController, which will glue user settings to multiple
-  // Flutter Widgets.
-  final settingsController = SettingsController(SettingsService());
+class MyApp extends StatelessWidget {
+    const MyApp({
+    super.key
+  });
 
-  // Load the user's preferred theme while the splash screen is displayed.
-  // This prevents a sudden theme change when the app is first displayed.
-  await settingsController.loadSettings();
 
-  // Run the app and pass in the SettingsController. The app listens to the
-  // SettingsController for changes, then passes it further down to the
-  // SettingsView.
-  runApp(MyApp(settingsController: settingsController));
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Altitude Tracker',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: AltitudePage(),
+    );
+  }
+}
+
+class AltitudePage extends StatefulWidget {
+  @override
+  _AltitudePageState createState() => _AltitudePageState();
+}
+
+class _AltitudePageState extends State<AltitudePage> {
+  LocationData? _locationData;
+  double? _altitude;
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    final location = Location();
+    bool serviceEnabled;
+    PermissionStatus permissionGranted;
+
+    serviceEnabled = await location.serviceEnabled();
+    if (!serviceEnabled) {
+      serviceEnabled = await location.requestService();
+      if (!serviceEnabled) {
+        return;
+      }
+    }
+
+    permissionGranted = await location.hasPermission();
+    if (permissionGranted == PermissionStatus.denied) {
+      permissionGranted = await location.requestPermission();
+      if (permissionGranted != PermissionStatus.granted) {
+        return;
+      }
+    }
+
+    final currentLocation = await location.getLocation();
+    setState(() {
+      _locationData = currentLocation;
+      _altitude = currentLocation.altitude;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Altitude App'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text(
+              'Altitude:',
+              style: TextStyle(fontSize: 24),
+            ),
+            Text(
+              _altitude != null ? '$_altitude meters' : 'Loading...',
+              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+            )
+          ],
+        ),
+      ),
+    );
+  }
 }
